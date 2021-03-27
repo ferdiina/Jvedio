@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.IO;
 using System.Text.RegularExpressions;
 using DynamicData;
+using System.Windows.Media.Imaging;
 
 namespace Jvedio.ViewModel
 {
@@ -48,14 +49,14 @@ namespace Jvedio.ViewModel
             }
         }
 
-        private VedioInfo _VedioInfo;
+        private VideoInfo _VideoInfo;
 
-        public VedioInfo VedioInfo
+        public VideoInfo VideoInfo
         {
-            get { return _VedioInfo; }
+            get { return _VideoInfo; }
             set
             {
-                _VedioInfo = value;
+                _VideoInfo = value;
                 RaisePropertyChanged();
             }
         }
@@ -122,53 +123,31 @@ namespace Jvedio.ViewModel
 
         public void SaveLove()
         {
-            string table = GetCurrentListFromMain();
-            if (!string.IsNullOrEmpty(table))
-            {
-                using(MySqlite mySqlite=new MySqlite("mylist"))
-                {
-                    mySqlite.ExecuteSql($"update {table} set favorites={ DetailMovie.favorites} where id='{DetailMovie.id}'");
-                }
-            }
-            else
-            {
+
                 DataBase.UpdateMovieByID(DetailMovie.id, "favorites", DetailMovie.favorites, "string");
-            }
-
-
         }
 
         public void SaveLabel()
         {
-            List<string> labels = DetailMovie.labellist;
+            List<string> labels = new List<string>();
+            labels.AddRange(DetailMovie.labellist);
             labels.Remove("+");
-
             DataBase.UpdateMovieByID(DetailMovie.id, "label", string.Join(" ", labels), "string");
-
+            
         }
 
 
-        public string GetCurrentListFromMain()
+        public void onLabelChanged()
         {
-            Main main = Jvedio.GetWindow.Get("Main") as Main;
-            return main.GetCurrentList();
+            RaisePropertyChanged("DetailMovie");
         }
+
 
 
         public void Query(string movieid)
         {
+            ((WindowDetails)FileProcess.GetWindowByName("WindowDetails")).SetStatus(false);
             DetailMovie detailMovie = null;
-            string table = GetCurrentListFromMain();
-            if (!string.IsNullOrEmpty(table))
-            {
-                //清单
-                using (MySqlite mySqlite = new MySqlite("mylist.sqlite"))
-                {
-                    detailMovie = mySqlite.SelectDetailMovieBySql($"select * from {table} where id='{movieid}'");
-                }
-            }
-            else
-            {
                 detailMovie = DataBase.SelectDetailMovieById(movieid);
                 //访问次数+1
                 if (detailMovie != null)
@@ -176,13 +155,7 @@ namespace Jvedio.ViewModel
                     detailMovie.visits += 1;
                     DataBase.UpdateMovieByID(movieid, "visits", detailMovie.visits);
                 }
-            }
-
-
-
-
-
-
+            
             //释放图片内存
             if (DetailMovie != null)
             {
@@ -205,7 +178,9 @@ namespace Jvedio.ViewModel
             DetailMovie = new DetailMovie();
             if (detailMovie != null)
             {
-                detailMovie.bigimage = ImageProcess.GetBitmapImage(detailMovie.id, "BigPic");
+                BitmapImage bigimage= ImageProcess.GetBitmapImage(detailMovie.id, "BigPic");
+                if (bigimage == null) bigimage = DefaultBigImage;
+                detailMovie.bigimage = bigimage;
                 MySqlite db = new MySqlite("Translate");
                 //加载翻译结果
                 if (Properties.Settings.Default.TitleShowTranslate)

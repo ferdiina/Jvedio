@@ -207,38 +207,86 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>Lib\UsnOperation.dll</HintPath>
     </Reference>
+    <Reference Include="VirtualizingWrapPanel, Version=1.5.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\VirtualizingWrapPanel.1.5.3\lib\net45\VirtualizingWrapPanel.dll</HintPath>
+    </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="WpfAnimatedGif, Version=1.0.0.0, Culture=neutral, PublicKeyToken=9e7cd3b544a090dc, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Reference\WpfAnimatedGif.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="AI\Baidu.cs" />
+    <Compile Include="DialogWindows\Dialog_LoadPage.xaml.cs">
+      <DependentUpon>Dialog_LoadPage.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DialogWindows\Dialog_SelectActor.xaml.cs">
+      <DependentUpon>Dialog_SelectActor.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DialogWindows\Dialog_Upgrade.xaml.cs">
+      <DependentUpon>Dialog_Upgrade.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DialogWindows\Dialog_Notice.xaml.cs">
+      <DependentUpon>Dialog_Notice.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DialogWindows\Dialog_NewMovie.xaml.cs">
+      <DependentUpon>Dialog_NewMovie.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="DialogWindows\Dialog_About.xaml.cs">
+      <DependentUpon>Dialog_About.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\AI\Baidu.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Library\BaseClass.cs" />
-    <Compile Include="Library\FileProcess\FileProcess.cs" />
-    <Compile Include="Library\ImageAndVedio\MediaParse.cs" />
-    <Compile Include="Config\RecentWatchedConfig.cs" />
-    <Compile Include="Config\ServerConfig.cs" />
-    <Compile Include="Config\ScanPathConfig.cs" />
-    <Compile Include="Controls\WaitingPanel.xaml.cs">
+    <Compile Include="UserControls\OutputPanel.xaml.cs">
+      <DependentUpon>OutputPanel.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\FileProcess\ClipBoard.cs" />
+    <Compile Include="Utils\FileProcess\FileHelper.cs" />
+    <Compile Include="Utils\Net\ActorCrawler.cs" />
+    <Compile Include="Utils\Net\Delay.cs" />
+    <Compile Include="Utils\Other\BaseClass.cs" />
+    <Compile Include="Utils\Other\Comparer.cs" />
+    <Compile Include="Utils\Other\Converter.cs" />
+    <Compile Include="Utils\ImageAndVedio\FFmpegHelper.cs" />
+    <Compile Include="Utils\ImageAndVedio\Gif.cs" />
+    <Compile Include="Utils\ImageAndVedio\GifImage.cs" />
+    <Compile Include="Utils\ImageAndVedio\ScreenShot.cs" />
+    <Compile Include="Utils\Net\DetailDownLoad.cs" />
+    <Compile Include="Utils\Net\Upgrade.cs" />
+    <Compile Include="Utils\Other\SampleMovies.cs" />
+    <Compile Include="Utils\Encrypt\Encrypt.cs" />
+    <Compile Include="Utils\FileProcess\FileProcess.cs" />
+    <Compile Include="Utils\ImageAndVedio\MediaParse.cs" />
+    <Compile Include="Utils\Config\RecentWatchedConfig.cs" />
+    <Compile Include="Utils\Config\ServerConfig.cs" />
+    <Compile Include="Utils\Config\ScanPathConfig.cs" />
+    <Compile Include="UserControls\WaitingPanel.xaml.cs">
       <DependentUpon>WaitingPanel.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Library\CustomExtension.cs" />
-    <Compile Include="Library\Sqlite.cs" />
-    <Compile Include="Library\MySqlite.cs" />
-    <Compile Include="Library\ImageAndVedio\MediaInfo.cs" />
-    <Compile Include="Library\ImageAndVedio\ImageProcess.cs" />
-    <Compile Include="Library\FileProcess\XML.cs" />
-    <Compile Include="Window\Jvedio_BaseWindow.cs" />
-    <Compile Include="Library\Net\MultiDownLoader.cs" />
-    <Compile Include="Library\Net\Translate.cs" />
+    <Compile Include="Utils\Other\CustomExtension.cs" />
+    <Compile Include="Utils\Sqlite\Sqlite.cs" />
+    <Compile Include="Utils\Sqlite\MySqlite.cs" />
+    <Compile Include="Utils\ImageAndVedio\MediaInfo.cs" />
+    <Compile Include="Utils\ImageAndVedio\ImageProcess.cs" />
+    <Compile Include="DialogWindows\BaseDialog.cs" />
+    <Compile Include="DialogWindows\Dialog_Thanks.xaml.cs">
+      <DependentUpon>Dialog_Thanks.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\Plot\Bar\BarView.xaml.cs">
+      <DependentUpon>BarView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Utils\Plot\Bar\BarViewModel.cs" />
+    <Compile Include="Windows\Jvedio_BaseWindow.cs" />
+    <Compile Include="Utils\Net\Translate.cs" />
     <Compile Include="Resource_IDData.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -250,91 +298,133 @@
       <DependentUpon>Resource_String.resx</DependentUpon>
     </Compile>
     <Compile Include="ViewModel\VieModel_Batch.cs" />
-    <Compile Include="Controls\DialogInput.xaml.cs">
+    <Compile Include="Windows\DialogInput.xaml.cs">
       <DependentUpon>DialogInput.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Library\Net\DownLoader.cs" />
-    <Compile Include="Library\ImageAndVedio\ImageSlide.cs" />
-    <Compile Include="Library\Net\Crawler.cs" />
-    <Compile Include="Library\DataBase.cs" />
-    <Compile Include="Library\FileProcess\Identify.cs" />
-    <Compile Include="Library\FileProcess\Logger.cs" />
-    <Compile Include="Library\Net\Net.cs" />
-    <Compile Include="Library\Net\CrawlerParse.cs" />
-    <Compile Include="Library\FileProcess\NFO.cs" />
-    <Compile Include="Library\FileProcess\Scan.cs" />
-    <Compile Include="Config\WindowConfig.cs" />
-    <Compile Include="Window\PopupWindow.xaml.cs">
-      <DependentUpon>PopupWindow.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Window\Msgbox.xaml.cs">
+    <Compile Include="Utils\Net\DownLoader.cs" />
+    <Compile Include="Utils\ImageAndVedio\ImageSlide.cs" />
+    <Compile Include="Utils\Net\Crawler.cs" />
+    <Compile Include="Utils\Sqlite\DataBase.cs" />
+    <Compile Include="Utils\FileProcess\Identify.cs" />
+    <Compile Include="Utils\FileProcess\Logger.cs" />
+    <Compile Include="Utils\Net\Net.cs" />
+    <Compile Include="Utils\Net\CrawlerParse.cs" />
+    <Compile Include="Utils\FileProcess\NFO.cs" />
+    <Compile Include="Utils\FileProcess\Scan.cs" />
+    <Compile Include="Utils\Config\WindowConfig.cs" />
+    <Compile Include="Windows\Msgbox.xaml.cs">
       <DependentUpon>Msgbox.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Library\GlobalVariable.cs" />
+    <Compile Include="Utils\Other\GlobalVariable.cs" />
     <Compile Include="ViewModel\VieModel_Details.cs" />
     <Compile Include="ViewModel\VieModel_Edit.cs" />
-    <Compile Include="ViewModel\VieModel_ImageViewer.cs" />
     <Compile Include="ViewModel\VieModel_Main.cs" />
     <Compile Include="ViewModel\VieModel_Tools.cs" />
     <Compile Include="ViewModel\VieModel_DBManagement.cs" />
     <Compile Include="ViewModel\VieModel_StartUp.cs" />
     <Compile Include="ViewModel\VieModel_Settings.cs" />
-    <Compile Include="Window\WindowDetails.xaml.cs">
+    <Compile Include="Windows\WindowDetails.xaml.cs">
       <DependentUpon>WindowDetails.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Window\WindowEdit.xaml.cs">
+    <Compile Include="Windows\WindowEdit.xaml.cs">
       <DependentUpon>WindowEdit.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Window\WindowImageViewer.xaml.cs">
-      <DependentUpon>WindowImageViewer.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Window\WindowSearch.xaml.cs">
-      <DependentUpon>WindowSearch.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Window\WindowBatch.xaml.cs">
+    <Compile Include="Windows\WindowBatch.xaml.cs">
       <DependentUpon>WindowBatch.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Window\WindowLoadActorMovies.xaml.cs">
-      <DependentUpon>WindowLoadActorMovies.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Window\WindowTest.xaml.cs">
-      <DependentUpon>WindowTest.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Window\WindowTools.xaml.cs">
+    <Compile Include="Windows\WindowTools.xaml.cs">
       <DependentUpon>WindowTools.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Window\WindowSettings.xaml.cs">
+    <Compile Include="Windows\WindowSettings.xaml.cs">
       <DependentUpon>WindowSettings.xaml</DependentUpon>
     </Compile>
     <Compile Include="WindowStartUp.xaml.cs">
       <DependentUpon>WindowStartUp.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Window\Window_DBManagement.xaml.cs">
+    <Compile Include="Windows\Window_DBManagement.xaml.cs">
       <DependentUpon>Window_DBManagement.xaml</DependentUpon>
     </Compile>
-    <Page Include="Controls\WaitingPanel.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Window\WindowSearch.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Window\WindowBatch.xaml">
+    <Compile Include="Windows\Window_ScreenShot.xaml.cs">
+      <DependentUpon>Window_ScreenShot.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Windows\Window_ImageViewer.xaml.cs">
+      <DependentUpon>Window_ImageViewer.xaml</DependentUpon>
+    </Compile>
+    <Page Include="DialogWindows\Dialog_LoadPage.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Window\WindowLoadActorMovies.xaml">
+    <Page Include="DialogWindows\Dialog_SelectActor.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Window\WindowTest.xaml">
+    <Page Include="DialogWindows\Dialog_Upgrade.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="DialogWindows\Dialog_Notice.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="DialogWindows\Dialog_NewMovie.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="DialogWindows\Dialog_About.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControls\OutputPanel.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="UserControls\WaitingPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\Window_DBManagement.xaml">
+    <Page Include="DialogWindows\BaseDialogStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="DialogWindows\Dialog_Thanks.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Utils\Plot\Bar\BarView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\WindowBatch.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Windows\Window_DBManagement.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Windows\Window_ScreenShot.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Windows\Window_ImageViewer.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="XAML\TextBoxStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="XAML\Color.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="XAML\DataGridStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="XAML\TabControlStyle.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
     <Page Include="XAML\BasicStyle.xaml">
       <SubType>Designer</SubType>
@@ -388,31 +478,23 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\Jvedio_BaseWindowStyle.xaml">
+    <Page Include="Windows\Jvedio_BaseWindowStyle.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\DialogInput.xaml">
+    <Page Include="Windows\DialogInput.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\PopupWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
-    <Page Include="Window\Msgbox.xaml">
+    <Page Include="Windows\Msgbox.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\WindowDetails.xaml">
+    <Page Include="Windows\WindowDetails.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\WindowEdit.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Window\WindowImageViewer.xaml">
+    <Page Include="Windows\WindowEdit.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -420,11 +502,11 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Window\WindowTools.xaml">
+    <Page Include="Windows\WindowTools.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Window\WindowSettings.xaml">
+    <Page Include="Windows\WindowSettings.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -450,12 +532,13 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Resource Include="Resources\menuitem\magnet.png" />
+    <Resource Include="Resources\Picture\NoPrinting_G.gif" />
+    <Resource Include="Data\github.txt" />
     <Content Include="Data\x64\SQLite.Interop.dll" />
     <Content Include="Data\x86\SQLite.Interop.dll" />
-    <Content Include="Lib\PInvoke.dll" />
-    <Content Include="Lib\QueryEngine.dll" />
-    <Content Include="Lib\UsnOperation.dll" />
-    <Resource Include="Resources\Picture\bg.jpg" />
+    <Resource Include="Resources\Skin\white\classify.png" />
+    <Resource Include="Resources\Skin\black\classify.png" />
     <Resource Include="Resources\Skin\black\hide.png" />
     <Resource Include="Resources\Skin\white\hide.png" />
     <Resource Include="Resources\Picture\其他.png" />
@@ -473,10 +556,8 @@
     <Resource Include="Resources\Picture\score.png" />
     <Resource Include="Resources\Skin\white\runtime.png" />
     <Resource Include="Resources\Skin\black\runtime.png" />
-    <Resource Include="Resources\Picture\NoPrinting_B.gif" />
     <Resource Include="Resources\Skin\white\create.png" />
     <Resource Include="Resources\Skin\black\create.png" />
-    <Resource Include="Resources\Gif\loading.gif" />
     <Resource Include="Resources\Picture\sort_up.png" />
     <Resource Include="Resources\Picture\sort_down.png" />
     <Resource Include="Resources\Skin\black\selectmode.png" />
@@ -533,9 +614,6 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <None Include="README.md" />
-    <Resource Include="Resources\Cursors\03.ani" />
-    <Resource Include="Resources\Cursors\04.ani" />
-    <Resource Include="Resources\Cursors\07.ani" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -714,9 +792,6 @@
     <Resource Include="Resources\Picture\screenshot.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Resources\Picture\admin.png" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Resources\Skin\white\detaildownload.png" />
   </ItemGroup>
   <ItemGroup>
@@ -757,13 +832,25 @@
     <Resource Include="Resources\Picture\delete.png" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Reference\PInvoke.dll" />
+    <Content Include="Reference\QueryEngine.dll" />
+    <Content Include="Reference\UsnOperation.dll" />
+    <Content Include="Reference\WpfAnimatedGif.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\Jvedio.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Lib\MediaInfo.dll" />
-    <Content Include="Lib\MediaInfoNET.dll" />
+    <Content Include="Reference\MediaInfo.dll" />
+    <Content Include="Reference\MediaInfoNET.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Jvedio.Language\Jvedio.Language.csproj">
+      <Project>{d7a06c53-5742-4894-820e-3697f81a3785}</Project>
+      <Name>Jvedio.Language</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -778,14 +865,15 @@
   <Import Project="..\packages\EntityFramework.6.3.0\build\EntityFramework.targets" Condition="Exists('..\packages\EntityFramework.6.3.0\build\EntityFramework.targets')" />
   <Import Project="..\packages\System.Data.SQLite.Core.1.0.113.1\build\net46\System.Data.SQLite.Core.targets" Condition="Exists('..\packages\System.Data.SQLite.Core.1.0.113.1\build\net46\System.Data.SQLite.Core.targets')" />
   <PropertyGroup>
-    <PreBuildEvent>XCOPY "$(ProjectDir)Data\x86" "$(TargetDir)\x86" /E /Y /i
-XCOPY "$(ProjectDir)Data\x64" "$(TargetDir)\x64" /E /Y /i
-XCOPY "$(ProjectDir)Lib\MediaInfo.dll" "$(TargetDir)" /E /Y /i
-XCOPY "$(ProjectDir)Lib\MediaInfoNET.dll" "$(TargetDir)" /E /Y /i
+    <PreBuildEvent>XCOPY "$(ProjectDir)Reference\MediaInfo.dll" "$(TargetDir)" /E /Y /i
+XCOPY "$(ProjectDir)Reference\MediaInfoNET.dll" "$(TargetDir)" /E /Y /i
 XCOPY "$(ProjectDir)Data\BusActress.sqlite" "$(TargetDir)" /E /Y /i
-</PreBuildEvent>
+XCOPY "$(ProjectDir)Data\x86" "$(TargetDir)\x86" /E /Y /i
+XCOPY "$(ProjectDir)Data\x64" "$(TargetDir)\x64" /E /Y /i</PreBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PostBuildEvent>XCOPY  "$(ProjectDir)bin\Debug"  "$(SolutionDir)ToGitee\public\File"    /E /Y /i</PostBuildEvent>
+    <PostBuildEvent>XCOPY  "$(ProjectDir)bin\Debug"  "$(SolutionDir)Release\public\File"    /E /Y /i
+XCOPY  "$(ProjectDir)Data\github.txt"  "$(SolutionDir)Release"    /E /Y /i
+</PostBuildEvent>
   </PropertyGroup>
 </Project>

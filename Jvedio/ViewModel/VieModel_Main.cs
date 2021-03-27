@@ -16,7 +16,9 @@ using System.Threading;
 using System.IO;
 using System.Windows.Threading;
 using System.Diagnostics;
+using static Jvedio.FileProcess;
 using static Jvedio.GlobalVariable;
+using static Jvedio.ImageProcess;
 using System.Windows.Input;
 using System.Drawing;
 using DynamicData;
@@ -24,6 +26,8 @@ using DynamicData.Binding;
 using System.Xml;
 using HandyControl.Tools.Extension;
 using DynamicData.Annotations;
+using System.Windows.Media;
+using System.ComponentModel;
 
 namespace Jvedio.ViewModel
 {
@@ -31,56 +35,16 @@ namespace Jvedio.ViewModel
     {
         public event EventHandler CurrentMovieListHideOrChanged;
         public event EventHandler CurrentActorListHideOrChanged;
-        public event EventHandler CurrentMovieListChangedCompleted;
+        public event EventHandler MovieFlipOverCompleted;
+        public event EventHandler ActorFlipOverCompleted;
+        public event EventHandler OnCurrentMovieListRemove;
 
         public bool IsFlipOvering = false;
-
-
         public VedioType CurrentVedioType = VedioType.所有;
 
-        private DispatcherTimer SearchTimer = new DispatcherTimer();
 
 
         public int SideIdx = 0;
-
-
-        public FixedList<List<string>> Record = new FixedList<List<string>>(10);//固定长度
-        public int RecordIndex= 0;
-
-        public VieModel_Main()
-        {
-            ResetCommand = new RelayCommand(Reset);
-            GenreCommand = new RelayCommand(GetGenreList);
-            ActorCommand = new RelayCommand(GetActorList);
-            LabelCommand = new RelayCommand(GetLabelList);
-
-
-            FavoritesCommand = new RelayCommand(GetFavoritesMovie);
-            RecentWatchCommand = new RelayCommand<bool>(t => GetRecentWatch());
-            RecentCommand = new RelayCommand(GetRecentMovie);
-            UncensoredCommand = new RelayCommand<VedioType>(t => GetMoviebyVedioType(VedioType.步兵));
-            CensoredCommand = new RelayCommand<VedioType>(t => GetMoviebyVedioType(VedioType.骑兵));
-            EuropeCommand = new RelayCommand<VedioType>(t => GetMoviebyVedioType(VedioType.欧美));
-
-
-
-            SearchTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(0.3) };
-            SearchTimer.Tick += new EventHandler(SearchTimer_Tick);
-
-
-            VedioType vedioType = VedioType.所有;
-            bool result = Enum.TryParse<VedioType>(Properties.Settings.Default.VedioType, out vedioType);
-            VedioType = vedioType;
-
-
-            //获得所有数据库
-            LoadDataBaseList();
-
-            DataBase.MovieListChanged += (o, e) => { CurrentPage = 1; };
-
-
-        }
-
 
 
 
@@ -94,31 +58,332 @@ namespace Jvedio.ViewModel
         public RelayCommand RecentCommand { get; set; }
 
         public RelayCommand<bool> RecentWatchCommand { get; set; }
-        public RelayCommand<VedioType> CensoredCommand { get; set; }
-        public RelayCommand<VedioType> UncensoredCommand { get; set; }
-        public RelayCommand<VedioType> EuropeCommand { get; set; }
+
+        public RelayCommand AddNewMovie { get; set; }
+        public RelayCommand FlipOverCommand { get; set; }
         #endregion
 
 
-        #region "enum"
-        private VedioType vedioType;
-
-        public VedioType VedioType
+        public VieModel_Main()
         {
-            get { return vedioType; }
+            ResetCommand = new RelayCommand(Reset);
+            GenreCommand = new RelayCommand(GetGenreList);
+            ActorCommand = new RelayCommand(GetActorList);
+            LabelCommand = new RelayCommand(GetLabelList);
+            FlipOverCommand = new RelayCommand(AsyncFlipOver);
+            FavoritesCommand = new RelayCommand(GetFavoritesMovie);
+            RecentWatchCommand = new RelayCommand<bool>(t => GetRecentWatch());
+            RecentCommand = new RelayCommand(GetRecentMovie);
+            AddNewMovie = new RelayCommand(AddSingleMovie);
+            //获得所有数据库
+            LoadDataBaseList();
+            LoadSearchHistory();
+            CurrentMovieList = new ObservableCollection<Movie>();
+            //CurrentMovieList.AllowEdit = true;
+            //CurrentMovieList.AllowNew = true;
+            //CurrentMovieList.AllowRemove = true;
+        }
+
+
+
+        #region "界面显示属性"
+
+        private SolidColorBrush _WebStatusBackground = System.Windows.Media.Brushes.Red;
+
+        public SolidColorBrush WebStatusBackground
+        {
+            get { return _WebStatusBackground; }
             set
             {
-                vedioType = value;
+                _WebStatusBackground = value;
                 RaisePropertyChanged();
-                //if (ClickGridType == 0) GetGenreList();
-                //else if (ClickGridType == 1) GetActorList();
-                //else GetLabelList();
+            }
+        }
+
+        private int _DatabaseSelectedIndex = 0;
+
+        public int DatabaseSelectedIndex
+        {
+            get { return _DatabaseSelectedIndex; }
+            set
+            {
+                _DatabaseSelectedIndex = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private Visibility _ShowFirstRun = Visibility.Collapsed;
+
+        public Visibility ShowFirstRun
+        {
+            get { return _ShowFirstRun; }
+            set
+            {
+                _ShowFirstRun = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private Visibility _ActorInfoGrid = Visibility.Collapsed;
+
+        public Visibility ActorInfoGrid
+        {
+            get { return _ActorInfoGrid; }
+            set
+            {
+                _ActorInfoGrid = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private Visibility _GoToTopCanvas = Visibility.Collapsed;
+
+        public Visibility GoToTopCanvas
+        {
+            get { return _GoToTopCanvas; }
+            set
+            {
+                _GoToTopCanvas = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private Visibility _ProgressBarVisibility = Visibility.Collapsed;
+
+        public Visibility ProgressBarVisibility
+        {
+            get { return _ProgressBarVisibility; }
+            set
+            {
+                _ProgressBarVisibility = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private Visibility _ActorProgressBarVisibility = Visibility.Collapsed;
+
+        public Visibility ActorProgressBarVisibility
+        {
+            get { return _ActorProgressBarVisibility; }
+            set
+            {
+                _ActorProgressBarVisibility = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private Visibility _CmdVisibility = Visibility.Collapsed;
+
+        public Visibility CmdVisibility
+        {
+            get { return _CmdVisibility; }
+            set
+            {
+                _CmdVisibility = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private string _CmdText = "";
+
+        public string CmdText
+        {
+            get { return _CmdText; }
+            set
+            {
+                _CmdText = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private int _ActorProgressBarValue = 0;
+
+        public int ActorProgressBarValue
+        {
+            get { return _ActorProgressBarValue; }
+            set
+            {
+                _ActorProgressBarValue = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private int _ProgressBarValue = 0;
+
+        public int ProgressBarValue
+        {
+            get { return _ProgressBarValue; }
+            set
+            {
+                _ProgressBarValue = value;
+                RaisePropertyChanged();
             }
         }
 
 
 
-        private MyImageType _ShowImageMode = (MyImageType)Enum.Parse(typeof(MyImageType), Properties.Settings.Default.ShowImageMode, true);
+
+        private bool _ShowSearchPopup = false;
+
+        public bool ShowSearchPopup
+        {
+            get { return _ShowSearchPopup; }
+            set
+            {
+                _ShowSearchPopup = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private bool _ShowActorTools = false;
+
+        public bool ShowActorTools
+        {
+            get { return _ShowActorTools; }
+            set
+            {
+                _ShowActorTools = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private BitmapSource _BackgroundImage = GlobalVariable.BackgroundImage;
+
+        public BitmapSource BackgroundImage
+        {
+            get { return _BackgroundImage; }
+            set
+            {
+                _BackgroundImage = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private int _TabSelectedIndex = 0;
+
+        public int TabSelectedIndex
+        {
+            get { return _TabSelectedIndex; }
+            set
+            {
+                _TabSelectedIndex = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private bool _HideSide = false;
+
+        public bool HideSide
+        {
+            get { return _HideSide; }
+            set
+            {
+                _HideSide = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private double _SideBorderWidth = 200;
+
+        public double SideBorderWidth
+        {
+            get { return _SideBorderWidth; }
+            set
+            {
+                _SideBorderWidth = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private bool _IsLoadingFilter = true;
+
+        public bool IsLoadingFilter
+        {
+            get { return _IsLoadingFilter; }
+            set
+            {
+                _IsLoadingFilter = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private bool _IsLoadingMovie = true;
+
+        public bool IsLoadingMovie
+        {
+            get { return _IsLoadingMovie; }
+            set
+            {
+                _IsLoadingMovie = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private bool _IsLoadingClassify = false;
+
+        public bool IsLoadingClassify
+        {
+            get { return _IsLoadingClassify; }
+            set
+            {
+                _IsLoadingClassify = value;
+                RaisePropertyChanged();
+            }
+        }
+
+        private bool _HideToIcon = false;
+
+        public bool HideToIcon
+        {
+            get { return _HideToIcon; }
+            set
+            {
+                _HideToIcon = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        private Thickness _MainGridThickness = new Thickness(10);
+
+        public Thickness MainGridThickness
+        {
+            get { return _MainGridThickness; }
+            set
+            {
+                _MainGridThickness = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+        #endregion
+
+
+
+
+
+        #region "enum"
+        private VedioType _ClassifyVedioType = 0;
+        public VedioType ClassifyVedioType
+        {
+            get { return _ClassifyVedioType; }
+            set
+            {
+                _ClassifyVedioType = value;
+                RaisePropertyChanged();
+            }
+        }
+
+
+
+        private MyImageType _ShowImageMode = 0;
 
         public MyImageType ShowImageMode
         {
@@ -133,7 +398,7 @@ namespace Jvedio.ViewModel
 
 
 
-        private ViewType _ShowViewMode = (ViewType)Enum.Parse(typeof(ViewType), Properties.Settings.Default.ShowViewMode, true);
+        private ViewType _ShowViewMode = 0;
 
         public ViewType ShowViewMode
         {
@@ -146,20 +411,9 @@ namespace Jvedio.ViewModel
         }
 
 
-        private MySearchType _SearchType = (MySearchType)Enum.Parse(typeof(MySearchType), Properties.Settings.Default.SearchType, true);
-
-        public MySearchType SearchType
-        {
-            get { return _SearchType; }
-            set
-            {
-                _SearchType = value;
-                RaisePropertyChanged();
-            }
-        }
 
 
-        private MySearchType _AllSearchType = (MySearchType)Enum.Parse(typeof(MySearchType), Properties.Settings.Default.AllSearchType, true);
+        private MySearchType _AllSearchType = 0;
 
         public MySearchType AllSearchType
         {
@@ -175,7 +429,16 @@ namespace Jvedio.ViewModel
 
 
         #region "ObservableCollection"
-
+        private ObservableCollection<char> _LettersNavigation;
+        public ObservableCollection<char> LettersNavigation
+        {
+            get { return _LettersNavigation; }
+            set
+            {
+                _LettersNavigation = value;
+                RaisePropertyChanged();
+            }
+        }
 
         private ObservableCollection<MyListItem> _MyList;
 
@@ -214,7 +477,6 @@ namespace Jvedio.ViewModel
                 currentmovielist = value;
                 RaisePropertyChanged();
                 CurrentMovieListHideOrChanged?.Invoke(this, EventArgs.Empty);
-                if (MovieList != null) TotalCount = MovieList.Count;
                 IsFlipOvering = false;
             }
         }
@@ -251,6 +513,8 @@ namespace Jvedio.ViewModel
 
 
         public List<Movie> MovieList;
+
+        public List<Movie> FilterMovieList;
 
         private ObservableCollection<Genre> genrelist;
         public ObservableCollection<Genre> GenreList
@@ -302,8 +566,40 @@ namespace Jvedio.ViewModel
             }
         }
 
+        private ObservableCollection<string> tagllist;
+        public ObservableCollection<string> TagList
+        {
+            get { return tagllist; }
+            set
+            {
+                tagllist = value;
+                RaisePropertyChanged();
+            }
+        }
 
+        private ObservableCollection<string> studiollist;
+        public ObservableCollection<string> StudioList
+        {
+            get { return studiollist; }
+            set
+            {
+                studiollist = value;
+                RaisePropertyChanged();
+            }
+        }
 
+        private ObservableCollection<string> directorList
+;
+        public ObservableCollection<string> DirectorList
+
+        {
+            get { return directorList; }
+            set
+            {
+                directorList = value;
+                RaisePropertyChanged();
+            }
+        }
 
         private ObservableCollection<string> _AllSearchCandidate;
 
@@ -329,6 +625,20 @@ namespace Jvedio.ViewModel
             set
             {
                 _FilePathClassification = value;
+                RaisePropertyChanged();
+
+            }
+        }
+
+        private ObservableCollection<string> _SearchHistory;
+
+
+        public ObservableCollection<string> SearchHistory
+        {
+            get { return _SearchHistory; }
+            set
+            {
+                _SearchHistory = value;
                 RaisePropertyChanged();
 
             }
@@ -391,71 +701,23 @@ namespace Jvedio.ViewModel
         }
 
 
-        private int _SqlIndex = 0;
+        private int _ShowStampType = 0;
 
-        public int SqlIndex
+        public int ShowStampType
         {
-            get { return _SqlIndex; }
+            get { return _ShowStampType; }
             set
             {
-                _SqlIndex = value;
-                RaisePropertyChanged();
-
-            }
-        }
-
-        private FixedList<Dictionary<string, string>> _SqlCommands = new FixedList<Dictionary<string, string>>();
-
-        public FixedList<Dictionary<string, string>> SqlCommands
-        {
-            get { return _SqlCommands; }
-            set
-            {
-                _SqlCommands = value;
-                RaisePropertyChanged();
-
-            }
-        }
-
-
-        private bool _ShowHDV = true;
-        public bool ShowHDV
-        {
-            get { return _ShowHDV; }
-            set
-            {
-                _ShowHDV = value;
+                _ShowStampType = value;
                 RaisePropertyChanged();
             }
         }
 
-        private bool _ShowCHS = true;
-        public bool ShowCHS
-        {
-            get { return _ShowCHS; }
-            set
-            {
-                _ShowCHS = value;
-                RaisePropertyChanged();
-            }
-        }
-
-        private bool _ShowFlowOut = true;
-        public bool ShowFlowOut
-        {
-            get { return _ShowFlowOut; }
-            set
-            {
-                _ShowFlowOut = value;
-                RaisePropertyChanged();
-            }
-        }
+        
 
 
-
-
-        private string _SortType = Properties.Settings.Default.SortType;
-        public string SortType
+        private Sort _SortType = 0;
+        public Sort SortType
         {
             get { return _SortType; }
             set
@@ -641,6 +903,33 @@ namespace Jvedio.ViewModel
         }
 
 
+
+        public double _ActorCurrentCount = 0;
+        public double ActorCurrentCount
+        {
+            get { return _ActorCurrentCount; }
+            set
+            {
+                _ActorCurrentCount = value;
+                RaisePropertyChanged();
+
+            }
+        }
+
+
+        public double _ActorTotalCount = 0;
+        public double ActorTotalCount
+        {
+            get { return _ActorTotalCount; }
+            set
+            {
+                _ActorTotalCount = value;
+                RaisePropertyChanged();
+
+            }
+        }
+
+
         public int currentactorpage = 1;
         public int CurrentActorPage
         {
@@ -688,7 +977,7 @@ namespace Jvedio.ViewModel
 
 
 
-        public string textType = "所有视频";
+        public string textType = Jvedio.Language.Resources.AllVideo;
 
         public string TextType
         {
@@ -702,9 +991,21 @@ namespace Jvedio.ViewModel
 
         public int ClickGridType { get; set; }
 
+        private bool _SearchFirstLetter = false;
+
+
+        public bool SearchFirstLetter
+        {
+            get { return _SearchFirstLetter; }
+            set
+            {
+                _SearchFirstLetter = value;
+                RaisePropertyChanged();
+            }
+        }
+
         private string search = string.Empty;
 
-        private bool IsSearching = false;
 
         public string Search
         {
@@ -713,14 +1014,20 @@ namespace Jvedio.ViewModel
             {
                 search = value;
                 RaisePropertyChanged();
-                if (search == "") Reset();
-                else
-                {
+                BeginSearch();
+            }
+        }
 
-                    SearchTimer.Stop();
-                    SearchTimer.Start();
-                }
+        private string _SearchHint = Jvedio.Language.Resources.Search + Jvedio.Language.Resources.ID;
 
+
+        public string SearchHint
+        {
+            get { return _SearchHint; }
+            set
+            {
+                _SearchHint = value;
+                RaisePropertyChanged();
             }
         }
 
@@ -892,8 +1199,11 @@ namespace Jvedio.ViewModel
             }
         }
 
-        public void GetFilterInfo()
+        public List<List<string>> Filters;
+
+        public async void GetFilterInfo()
         {
+            IsLoadingFilter = true;
             Year = new ObservableCollection<string>();
             Genre = new ObservableCollection<string>();
             Actor = new ObservableCollection<string>();
@@ -901,52 +1211,61 @@ namespace Jvedio.ViewModel
             Runtime = new ObservableCollection<string>();
             FileSize = new ObservableCollection<string>();
             Rating = new ObservableCollection<string>();
-            var models = DataBase.GetAllFilter();
-            Year.AddRange(models[0]);
-            Runtime.AddRange(models[4]);
-            FileSize.AddRange(models[5]);
-            Rating.AddRange(models[6]);
-            Genre.AddRange(models[1].Take(30));
-            Actor.AddRange(models[2].Take(30));
-            Label.AddRange(models[3]);
+            Filters = await DataBase.GetAllFilter();
+            Year.AddRange(Filters[0]);
+            Genre.AddRange(Filters[1].Take(30));
+            Actor.AddRange(Filters[2].Take(30));
+            Label.AddRange(Filters[3]);
+            Runtime.AddRange(Filters[4]);
+            FileSize.AddRange(Filters[5]);
+            Rating.AddRange(Filters[6]);
+            IsLoadingFilter = false;
 
 
+            Main main = GetWindowByName("Main") as Main;
+            main.GenreItemsControl.ItemsSource = null;
+            main.GenreItemsControl.ItemsSource = Genre;
 
+            main.ActorFilterItemsControl.ItemsSource = null;
+            main.ActorFilterItemsControl.ItemsSource = Actor;
 
+            main.LabelFilterItemsControl.ItemsSource = null;
+            main.LabelFilterItemsControl.ItemsSource = Label;
         }
 
 
-        public ObservableCollection<string> GetAllGenre()
-        {
-            //Genre = new ObservableCollection<string>();
-            //var models = DataBase.GetAllFilter();
-            //Genre.AddRange(models[1]);
-            ObservableCollection<string> result = new ObservableCollection<string>();
-            var models = DataBase.GetAllFilter();
-            result.AddRange(models[1]);
-            return result;
-        }
-
-        public ObservableCollection<string> GetAllActor()
-        {
-            //Actor = new ObservableCollection<string>();
-            //var models = DataBase.GetAllFilter();
-            //Actor.AddRange(models[2]);
-            ObservableCollection<string> result = new ObservableCollection<string>();
-            var models = DataBase.GetAllFilter();
-            result.AddRange(models[2]);
-            return result;
-
-        }
 
         #endregion
 
+
+        public async Task<bool> InitLettersNavigation()
+        {
+            LettersNavigation = new ObservableCollection<char>();
+            List<char> _temp = new List<char>();
+            var movies = DataBase.SelectAllID();
+            if (movies == null || movies.Count == 0) return false;
+            foreach (var item in movies)
+            {
+
+                if (item.Length >= 1)
+                {
+                    char firstchar = item.ToUpper()[0];
+                    if (!_temp.Contains(firstchar)) _temp.Add(firstchar);
+                }
+            }
+
+            foreach (var item in _temp.OrderBy(arg => arg))
+            {
+                LettersNavigation.Add(item);
+            }
+            return true;
+        }
+
+
         public async void BeginSearch()
         {
-            IsSearching = true;
+            //GetSearchCandidate(Search.ToProperSql());
             await Query();
-            IsSearching = false;
-            GetSearchCandidate(Search.ToProperSql());
             FlipOver();
         }
 
@@ -956,168 +1275,349 @@ namespace Jvedio.ViewModel
             try
             {
                 var fiels = Directory.GetFiles("DataBase", "*.sqlite", SearchOption.TopDirectoryOnly).ToList();
-                fiels.ForEach(arg => DataBases.Add(arg.Split('\\').Last().Split('.').First().ToLower()));
+                fiels.ForEach(arg => DataBases.Add(Path.GetFileNameWithoutExtension(arg).ToLower()));
             }
             catch { }
-
-            if (!DataBases.Contains("info")) DataBases.Add("info");
         }
 
 
 
-        private void SearchTimer_Tick(object sender, EventArgs e)
-        {
-            if (!IsSearching) BeginSearch();
-            SearchTimer.Stop();
-        }
 
-        public void GetSearchCandidate(string Search)
+
+
+
+        private void AddSingleMovie()
         {
-            CurrentSearchCandidate = new ObservableCollection<string>();
-            if (Search == "") return;
-            List<Movie> movies = new List<Movie>();
-            if (AllSearchType == MySearchType.名称)
+            Dialog_NewMovie dialog_NewMovie = new Dialog_NewMovie((Main)GetWindowByName("Main"));
+            var b = (bool)dialog_NewMovie.ShowDialog();
+            NewMovieDialogResult result = dialog_NewMovie.Result;
+
+            if (b && !string.IsNullOrEmpty(result.Text))
             {
-                movies = MovieList.Where(m => m.title.ToUpper().Contains(Search.ToUpper())).ToList();
-                foreach (Movie movie in movies)
+                List<string> IDList = GetIDListFromString(result.Text, result.VedioType);
+                foreach (var item in IDList)
                 {
-                    CurrentSearchCandidate.Add(movie.title);
-                    if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
+                    InsertID(item, result.VedioType);
                 }
             }
-            else if (AllSearchType == MySearchType.演员)
+
+
+        }
+
+        private void InsertID(string id, VedioType vedioType)
+        {
+            Movie movie = DataBase.SelectMovieByID(id);
+            if (movie != null)
             {
-                movies = MovieList.Where(m => m.actor.ToUpper().Contains(Search.ToUpper())).ToList();
-                foreach (Movie movie in movies)
+                HandyControl.Controls.Growl.Info($"{id} {Jvedio.Language.Resources.Message_AlreadyExist}", "Main");
+            }
+            else
+            {
+                Movie movie1 = new Movie()
                 {
-                    string[] actor = movie.actor.Split(actorSplitDict[movie.vediotype]);
-                    foreach (var item in actor)
+                    id = id,
+                    vediotype = (int)vedioType,
+                    releasedate = "1900-01-01",
+                    otherinfo = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                };
+                DataBase.InsertScanMovie(movie1);
+                MovieList.Insert(0, movie1);
+                CurrentMovieList.Insert(0, movie1);
+                FilterMovieList.Insert(0, movie1);
+            }
+        }
+
+
+        public List<string> GetIDListFromString(string str, VedioType vedioType)
+        {
+            List<string> result = new List<string>();
+            foreach (var item in str.Split(new string[] { System.Environment.NewLine }, StringSplitOptions.None))
+            {
+                string id = "";
+                if (vedioType == VedioType.欧美)
+                    id = item.Replace(" ", "");
+                else
+                    id = item.ToUpper().Replace(" ", "");
+
+                if (!string.IsNullOrEmpty(id) && !result.Contains(id)) result.Add(id);
+            }
+            return result;
+        }
+
+        private delegate void LoadSearchDelegate(string str);
+        private void LoadSearch(string str)
+        {
+            if (!CurrentSearchCandidate.Contains(str)) CurrentSearchCandidate.Add(str);
+        }
+
+
+
+
+        public async Task<bool> GetSearchCandidate(string Search)
+        {
+            return await Task.Run(async () =>
+            {
+
+                CurrentSearchCandidate = new ObservableCollection<string>();
+                if (Search == "") return false;
+
+                //提取出英文和数字
+                string extraSearch = "";
+                string number = Identify.GetNum(Search);
+                string eng = Identify.GetEng(Search);
+
+                Search = Search.Replace("%", "").Replace("'", "");
+                if (!string.IsNullOrEmpty(number)) extraSearch = eng + "-" + number;
+                List<Movie> movies = new List<Movie>();
+                if (AllSearchType == MySearchType.名称)
+                {
+                    if (SearchInCurrent)
+                        movies = MovieList.Where(m => m.title.ToUpper().Contains(Search.ToUpper())).ToList();
+                    else
+                        movies = DataBase.SelectMoviesBySql($"SELECT * from movie where title like '%{Search}%'");
+
+                    foreach (Movie movie in movies)
                     {
-                        if (!string.IsNullOrEmpty(item) & item.IndexOf(' ') < 0)
-                        {
-                            if (!CurrentSearchCandidate.Contains(item) & item.ToUpper().IndexOf(Search.ToUpper()) >= 0) CurrentSearchCandidate.Add(item);
-                            if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
-                        }
+                        await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadSearchDelegate(LoadSearch), movie.title);
+                        if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
                     }
-                    if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
                 }
-            }
-            else if (AllSearchType == MySearchType.识别码)
-            {
-                movies = MovieList.Where(m => m.id.ToUpper().Contains(Search.ToUpper())).ToList();
-                foreach (Movie movie in movies)
+                else if (AllSearchType == MySearchType.演员)
                 {
-                    CurrentSearchCandidate.Add(movie.id);
-                    if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
+                    if (SearchInCurrent)
+                        movies = MovieList.Where(m => m.actor.ToUpper().Contains(Search.ToUpper())).ToList();
+                    else
+                        movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actor like '%{Search}%'");
+
+                    foreach (Movie movie in movies)
+                    {
+                        string[] actor = movie.actor.Split(actorSplitDict[movie.vediotype]);
+                        foreach (var item in actor)
+                        {
+                            if (!string.IsNullOrEmpty(item) & item.IndexOf(' ') < 0)
+                            {
+                                if (!CurrentSearchCandidate.Contains(item) & item.ToUpper().IndexOf(Search.ToUpper()) >= 0)
+                                {
+                                    await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadSearchDelegate(LoadSearch), item);
+                                }
+                                if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
+                            }
+                        }
+                        if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
+                    }
                 }
-            }
+                else if (AllSearchType == MySearchType.识别码)
+                {
+                    if (SearchInCurrent)
+                        movies = MovieList.Where(m => m.id.ToUpper().Contains(Search.ToUpper())).ToList();
+                    else
+                        movies = DataBase.SelectMoviesBySql($"SELECT * from movie where id like '%{Search}%'");
+
+                    if (movies.Count == 0 && extraSearch != "") movies = MovieList.Where(m => m.id.ToUpper().Contains(extraSearch.ToUpper())).ToList();
+                    foreach (Movie movie in movies)
+                    {
+                        await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadSearchDelegate(LoadSearch), movie.id);
+                        if (CurrentSearchCandidate.Count >= Properties.Settings.Default.SearchCandidateMaxCount) break;
+                    }
+                }
+                return true;
+
+            });
         }
 
 
+        public void SaveSearchHistory()
+        {
+            
+            try
+            {
+                if (SearchHistory.Count <= 0)
+                {
+                    File.Delete("SearchHistory");
+                    ((Main)GetWindowByName("Main")).SearchHistoryStackPanel.Visibility = Visibility.Collapsed;
+                }
+                else
+                {
+                    using (StreamWriter sw = new StreamWriter("SearchHistory"))
+                    {
+                        sw.Write(string.Join("'", SearchHistory));
+                    }
+                        ((Main)GetWindowByName("Main")).SearchHistoryStackPanel.Visibility = Visibility.Visible;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogF(ex);
+            }
+        }
+
+        public void LoadSearchHistory()
+        {
+            SearchHistory = new ObservableCollection<string>();
+            if (!File.Exists("SearchHistory")) return;
+            string content = "";
+            try
+            {
+                using (StreamReader sr = new StreamReader("SearchHistory"))
+                {
+                    content = sr.ReadToEnd();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogF(ex);
+            }
+
+            if (content != "" && content.IndexOf("'") >= 0)
+            {
+                foreach (var item in content.Split('\''))
+                {
+                    if (!SearchHistory.Contains(item) && !string.IsNullOrEmpty(item)) SearchHistory.Add(item);
+                }
+            }else if (content.Length > 0)
+            {
+                SearchHistory.Add(content);
+            }
+
+        }
 
 
 
         public void Flow()
         {
-            if (MovieList != null)
+            if (FilterMovieList == null) return;
+            App.Current.Dispatcher.Invoke((Action)delegate
             {
-                CurrentMovieListHideOrChanged?.Invoke(this, EventArgs.Empty); //停止下载
-                int DisPlayNum = Properties.Settings.Default.DisplayNumber;//每页展示数目
-                int SetFlowNum = Properties.Settings.Default.FlowNum;//流动数目
-                Movies = new List<Movie>();
-                for (int i = (CurrentPage - 1) * DisPlayNum + FlowNum * SetFlowNum; i < (CurrentPage - 1) * DisPlayNum + (FlowNum + 1) * SetFlowNum; i++)
+                ((Main)GetWindowByName("Main")).SetLoadingStatus(true);
+            });
+
+            CurrentMovieListHideOrChanged?.Invoke(this, EventArgs.Empty); //停止下载
+            int DisPlayNum = Properties.Settings.Default.DisplayNumber;//每页展示数目
+            int SetFlowNum = Properties.Settings.Default.FlowNum;//流动数目
+            Movies = new List<Movie>();
+            int min = (CurrentPage - 1) * DisPlayNum + FlowNum * SetFlowNum;
+            int max = (CurrentPage - 1) * DisPlayNum + (FlowNum + 1) * SetFlowNum;
+            for (int i = min; i < max; i++)
+            {
+                if (CurrentMovieList.Count + Movies.Count < DisPlayNum)
                 {
-                    if (CurrentMovieList.Count + Movies.Count< DisPlayNum)
+                    if (i <= FilterMovieList.Count - 1)
                     {
-                        if (i <= MovieList.Count - 1)
-                        {
-                            Movie movie = MovieList[i];
-                            //添加标签戳
-                            FileProcess.addTag(ref movie);
+                        Movie movie = FilterMovieList[i];
+                        //添加标签戳
+                        FileProcess.addTag(ref movie);
 
-                            if (!string.IsNullOrEmpty(movie.id)) Movies.Add(movie);
-                        }
-                        else { break; }
+                        if (!string.IsNullOrEmpty(movie.id)) Movies.Add(movie);
                     }
-                    else
-                    {
-                        FlowNum = 0;
-                    }
-
+                    else { break; }
+                }
+                else
+                {
+                    FlowNum = 0;
                 }
 
-                
-
-                App.Current.Dispatcher.Invoke((Action)delegate
-                {
-                    if (CurrentMovieList != null) CurrentCount = CurrentMovieList.Count + Movies.Count;
-                    if (CurrentCount > MovieList.Count) CurrentCount = MovieList.Count;
-
-                });
-
-                foreach (Movie movie in Movies)
-                {
-                    movie.smallimage = ImageProcess.GetBitmapImage(movie.id, "SmallPic");
-                    movie.bigimage = ImageProcess.GetBitmapImage(movie.id, "BigPic");
-                    App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadItemDelegate(LoadMovie), movie);
-                }
-
-                App.Current.Dispatcher.Invoke((Action)delegate
-                {
-                    Main main = App.Current.Windows[0] as Main;
-                    if (Properties.Settings.Default.ShowImageMode == "预览图") main.ImageSlideTimer.Start();//0.5s后开始展示预览图
-                    IsFlipOvering = false;
-                    if (main != null)
-                    {
-                        //main.IsFlowing = false;
-                        main.SetSelected();
-                        CurrentMovieListChangedCompleted?.Invoke(this, EventArgs.Empty);
-                    }
-                    
-                });
-
-
-
-                //CurrentMovieList.AddRange(Movies);
-                //CurrentCount = CurrentMovieList.Count;
-                //App.Current.Dispatcher.Invoke((Action)delegate
-                //{
-                //    CurrentMovieListChangedCompleted?.Invoke(this, EventArgs.Empty);
-                //    Main main = App.Current.Windows[0] as Main;
-                //    if (Properties.Settings.Default.ShowImageMode == "预览图") main.ImageSlideTimer.Start();//0.5s后开始展示预览图
-                //    IsFlipOvering = false;
-                //    main.AsyncLoadImage(); //异步加载图片
-                //    main.IsFlowing = false;
-                //    main.SetSelected();
-                //});
             }
+
+            foreach (Movie item in Movies)
+            {
+                Movie movie = item;
+                if (!Properties.Settings.Default.EasyMode) SetImage(ref movie);
+                App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadItemDelegate(LoadMovie), movie);
+            }
+
+            App.Current.Dispatcher.Invoke((Action)delegate
+            {
+                if (GetWindowByName("Main") is Main main)
+                {
+                    MovieFlipOverCompleted?.Invoke(this, EventArgs.Empty);
+                }
+
+            });
+
+
         }
 
 
-        public void Refresh()
+        public async Task<bool> ClearCurrentMovieList()
         {
-            App.Current.Windows[0].Cursor = Cursors.Wait;
-            List<string> CurrentID = new List<string>();
-            foreach (Movie movie in CurrentMovieList) CurrentID.Add(movie.id);
-            CurrentMovieList = new ObservableCollection<Movie>();
-            FlipOver();
-            App.Current.Windows[0].Cursor = Cursors.Arrow;
+            //if (CurrentMovieList == null) CurrentMovieList = new BindingList<Movie>();
+
+            //await Task.Run(() => {
+            //    App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)delegate {
+            //        Main main = (Main)GetWindowByName("Main");
+            //        //main.MovieItemsControl.ItemsSource = null;
+            //    });
+            //});
+
+            
+
+            await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)delegate {
+                //CurrentMovieList.RaiseListChangedEvents = false;
+                for (int i = CurrentMovieList.Count - 1; i >= 0; i--)
+                {
+                    CurrentMovieList[i].bigimage = null;
+                    CurrentMovieList[i].smallimage = null;
+                }
+            });
+
+
+
+
+
+            await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, (Action)delegate {
+                Main main = (Main)GetWindowByName("Main");
+                CurrentMovieList.Clear();
+                CurrentMovieList = new ObservableCollection<Movie>();
+                GC.Collect();
+                if (main.ImageSlides != null)
+                {
+                    for (int i = 0; i < main.ImageSlides.Count; i++)
+                    {
+                        main.ImageSlides[i].Stop();
+                    }
+                    main.ImageSlides.Clear();
+                }
+                if(Properties.Settings.Default.EasyMode)
+                    main.SimpleMovieItemsControl.ItemsSource = CurrentMovieList;
+                else
+                    main.MovieItemsControl.ItemsSource = CurrentMovieList;
+            });
+            
+            return true;
         }
+
+
+        public async Task<bool> ClearCurrentActorList()
+        {
+            if (CurrentActorList == null) CurrentActorList = new ObservableCollection<Actress>();
+            for (int i = CurrentActorList.Count - 1; i >= 0; i--)
+            {
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new RemoveActorDelegate(RemoveActor), CurrentActorList[i]);
+            }
+            return true;
+        }
+
+
+
 
         public void RefreshActor()
         {
-            GetActorList();
+            Statistic();
+            List<Actress> Actresses = DataBase.SelectAllActorName(ClassifyVedioType);
+            ActorList = new ObservableCollection<Actress>();
+            ActorList.AddRange(Actresses);
+            ActorFlipOver();
         }
 
 
-        public void ActorFlipOver()
+        public bool ActorFlipOver()
         {
-            stopwatch.Restart();
-            if (ActorList != null)
+            TabSelectedIndex = 1;
+            if (ActorList == null) return false;
+            Task.Run(async () =>
             {
+                SetClassifyLoadingStatus(true);
                 TotalActorPage = (int)Math.Ceiling((double)ActorList.Count / (double)Properties.Settings.Default.ActorDisplayNum);
-
-                //只在翻页时加载图片、显示翻译结果
                 int ActorDisplayNum = Properties.Settings.Default.ActorDisplayNum;
                 List<Actress> actresses = new List<Actress>();
                 for (int i = (CurrentActorPage - 1) * ActorDisplayNum; i < CurrentActorPage * ActorDisplayNum; i++)
@@ -1125,29 +1625,29 @@ namespace Jvedio.ViewModel
                     if (i < ActorList.Count)
                     {
                         Actress actress = ActorList[i];
-                        actress.smallimage = ImageProcess.GetBitmapImage(actress.name, "Actresses");
+                        actress.smallimage = GetActorImage(actress.name);
                         actresses.Add(actress);
                     }
                     else { break; }
                     if (actresses.Count == ActorDisplayNum) { break; }
                 }
+                await ClearCurrentActorList();
 
-                App.Current.Dispatcher.BeginInvoke((Action)delegate {
-                    CurrentActorList = new ObservableCollection<Actress>();
-                });
                 foreach (Actress actress1 in actresses)
                 {
-                    App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadActorDelegate(LoadActor), actress1);
+                    await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadActorDelegate(LoadActor), actress1);
                 }
 
-                App.Current.Dispatcher.BeginInvoke((Action)delegate {
-                    if (App.Current.Windows[0] is Main main) { main.ActorSetSelected(); }
+                await App.Current.Dispatcher.BeginInvoke((Action)delegate
+                {
+                    if (GetWindowByName("Main") is Main main)
+                    {
+                        ActorFlipOverCompleted?.Invoke(this, EventArgs.Empty);
+                    }
                 });
-                
 
-            }
-            stopwatch.Stop();
-            Console.WriteLine($"\n演员翻页用时：{stopwatch.ElapsedMilliseconds} ms");
+            });
+            return true;
 
         }
 
@@ -1159,16 +1659,32 @@ namespace Jvedio.ViewModel
             CurrentActorList.Add(actress);
         }
 
-        public void DisposeMovieList(ObservableCollection<Movie> movies)
+        private delegate void RemoveActorDelegate(Actress actress);
+        private void RemoveActor(Actress actress)
         {
-            if (movies == null) return;
+            CurrentActorList.Remove(actress);
+        }
 
-            for (int i = 0; i < movies.Count; i++)
+
+        public void DisposeMovie(string id)
+        {
+            //if (CurrentMovieList == null) return false;
+            //await App.Current.Dispatcher.BeginInvoke((Action)delegate
+            //{
+            //    Main main = GetWindowByName("Main") as Main;
+            //    main.DisposeGif("", true);
+            //});
+            for (int i = 0; i < CurrentMovieList.Count; i++)
             {
-                movies[i].bigimage = null;
-                movies[i].smallimage = null;
+                if (CurrentMovieList[i].id == id)
+                {
+                    CurrentMovieList[i].bigimage = null;
+                    CurrentMovieList[i].smallimage = null;
+                    break;
+                }
             }
             GC.Collect();
+            //return true;
         }
 
 
@@ -1181,78 +1697,80 @@ namespace Jvedio.ViewModel
         /// </summary>
         public bool FlipOver()
         {
-            GetLabelList();
-            if (Properties.Settings.Default.ShowImageMode == "列表模式")
+            TabSelectedIndex = 0;
+            if (MovieList == null) return false;
+            App.Current.Dispatcher.Invoke((Action)delegate
             {
-                ShowDetailsData();
-            }
-            else
-            {
-                Sort();
-                IsFlipOvering = true;
-                Task.Run(() =>
+                ((Main)GetWindowByName("Main")).SetLoadingStatus(true);//正在加载影片
+                ((Main)GetWindowByName("Main")).MovieScrollViewer.ScrollToTop();//滚到顶部
+            });
+
+            if(!Properties.Settings.Default.RandomDisplay) Sort(); //随机展示不排序，否则排序
+
+            int number = 0;
+            if (FilterMovieList != null) number = FilterMovieList.Count;
+            FilterMovieList = FileProcess.FilterMovie(MovieList);   //筛选影片
+            if (FilterMovieList.Count < number) CurrentPage = 1;                // FilterMovieList 如果改变了，则回到第一页
+            Task.Run(async () =>
+           {
+               
+               await ClearCurrentMovieList();//动态清除当前影片
+               
+               TotalPage = (int)Math.Ceiling((double)FilterMovieList.Count / Properties.Settings.Default.DisplayNumber);
+               int DisPlayNum = Properties.Settings.Default.DisplayNumber;
+               int FlowNum = Properties.Settings.Default.FlowNum;
+
+               Movies = new List<Movie>();
+               //从 FilterMovieList 中添加影片到 临时 Movies 中
+               for (int i = (CurrentPage - 1) * DisPlayNum; i < (CurrentPage - 1) * DisPlayNum + FlowNum; i++)
+               {
+                   if (i <= FilterMovieList.Count - 1)
+                   {
+                       Movie movie = FilterMovieList[i];
+                       Movies.Add(movie);
+                   }
+                   else { break; }
+                   if (Movies.Count == FlowNum) { break; }
+
+               }
+
+               //添加标签戳
+               for (int i = 0; i < Movies.Count; i++)
+               {                      
+                    if (Identify.IsHDV(Movies[i].filepath) || Movies[i].genre?.IndexOfAnyString(TagStrings_HD) >= 0 || Movies[i].tag?.IndexOfAnyString(TagStrings_HD) >= 0 || Movies[i].label?.IndexOfAnyString(TagStrings_HD) >= 0) Movies[i].tagstamps += Jvedio.Language.Resources.HD;
+                   if (Identify.IsCHS(Movies[i].filepath) || Movies[i].genre?.IndexOfAnyString(TagStrings_Translated) >= 0 || Movies[i].tag?.IndexOfAnyString(TagStrings_Translated) >= 0 || Movies[i].label?.IndexOfAnyString(TagStrings_Translated) >= 0) Movies[i].tagstamps += Jvedio.Language.Resources.Translated;
+                   if (Identify.IsFlowOut(Movies[i].filepath) || Movies[i].genre?.IndexOfAnyString(TagStrings_FlowOut) >= 0 || Movies[i].tag?.IndexOfAnyString(TagStrings_FlowOut) >= 0 || Movies[i].label?.IndexOfAnyString(TagStrings_FlowOut) >= 0) Movies[i].tagstamps += Jvedio.Language.Resources.FlowOut;
+               }
+
+               //根据标签戳筛选
+               if (ShowStampType>=1)
+                   Movies=Movies.Where(arg => arg.tagstamps.IndexOf(ShowStampType.ToString().ToTagString()) >= 0).ToList();
+
+               
+
+
+               foreach (Movie item in Movies)
+               {
+                   Movie movie = item;
+                   if(!Properties.Settings.Default.EasyMode) SetImage(ref movie);
+                   await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadItemDelegate(LoadMovie), movie);
+               }
+
+               await App.Current.Dispatcher.BeginInvoke((Action)delegate
                 {
-                    if (MovieList != null)
-                    {
-
-                        TotalPage = (int)Math.Ceiling((double)MovieList.Count / (double)Properties.Settings.Default.DisplayNumber);
-                        int DisPlayNum = Properties.Settings.Default.DisplayNumber;
-                        int FlowNum = Properties.Settings.Default.FlowNum;
-                        DisposeMovieList(CurrentMovieList);
-
-                        //Console.WriteLine("CurrentPage=" + CurrentPage);
-                        Movies = new List<Movie>();
-                        for (int i = (CurrentPage - 1) * DisPlayNum; i < (CurrentPage - 1) * DisPlayNum + FlowNum; i++)
-                        {
-                            if (i <= MovieList.Count - 1)
-                            {
-                                Movie movie = MovieList[i];
-                                Movies.Add(movie);
-                            }
-                            else { break; }
-                            if (Movies.Count == FlowNum) { break; }
-
-                        }
-                        for (int i = 0; i < Movies.Count; i++)
-                        {
-                            //添加标签戳
-                            if (Identify.IsHDV(Movies[i].filepath) || Movies[i].genre?.IndexOf("高清") >= 0 || Movies[i].tag?.IndexOf("高清") >= 0 || Movies[i].label?.IndexOf("高清") >= 0) Movies[i].tagstamps += "高清";
-                            if (Identify.IsCHS(Movies[i].filepath) || Movies[i].genre?.IndexOf("中文") >= 0 || Movies[i].tag?.IndexOf("中文") >= 0 || Movies[i].label?.IndexOf("中文") >= 0) Movies[i].tagstamps += "中文";
-                            if (Identify.IsFlowOut(Movies[i].filepath) || Movies[i].genre?.IndexOf("流出") >= 0 || Movies[i].tag?.IndexOf("流出") >= 0 || Movies[i].label?.IndexOf("流出") >= 0) Movies[i].tagstamps += "流出";
-                        }
-
-
-
-                        App.Current.Dispatcher.BeginInvoke((Action)delegate { 
-                            CurrentMovieList = new ObservableCollection<Movie>();
-                            CurrentCount = Movies.Count;
-                        });
-                        foreach (Movie movie in Movies)
-                        {
-                            movie.smallimage = ImageProcess. GetBitmapImage(movie.id, "SmallPic");
-                            movie.bigimage = ImageProcess.GetBitmapImage(movie.id, "BigPic");
-                            App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadItemDelegate(LoadMovie), movie);
-                        }
-
-                        App.Current.Dispatcher.Invoke((Action)delegate
-                        {
-                            Main main = App.Current.Windows[0] as Main;
-                            if (Properties.Settings.Default.ShowImageMode == "预览图") main.ImageSlideTimer.Start();//0.5s后开始展示预览图
-                            IsFlipOvering = false;
-                            if (main != null)
-                            {
-                                //main.IsFlowing = false;
-                                main.SetSelected();
-                                CurrentMovieListChangedCompleted?.Invoke(this, EventArgs.Empty);
-                            }
-                            
-                        });
-                    }
+                    MovieFlipOverCompleted?.Invoke(this, EventArgs.Empty);
                 });
-            }
 
+           });
             return true;
         }
+
+        public void SetClassifyLoadingStatus(bool loading)
+        {
+            IsLoadingClassify = loading;
+            //IsLoadingMovie = loading;
+        }
+
 
         private delegate void LoadItemDelegate(Movie movie);
         private void LoadMovie(Movie movie)
@@ -1262,50 +1780,111 @@ namespace Jvedio.ViewModel
 
 
 
-        //获得标签
-        public void GetLabelList()
-        {
-            //TextType = "标签";
-            List<string> labels = DataBase.SelectLabelByVedioType(VedioType);
+        private delegate void LoadLabelDelegate(string str);
+        private void LoadLabel(string str) => LabelList.Add(str);
+        private void LoadTag(string str) => TagList.Add(str);
+        private void LoadStudio(string str) => StudioList.Add(str);
+        private void LoadDirector(string str) => DirectorList.Add(str);
 
-            App.Current.Dispatcher.Invoke((Action)delegate
+        //获得标签
+        public async void GetLabelList()
+        {
+            List<string> labels = DataBase.SelectLabelByVedioType(ClassifyVedioType);
+            LabelList = new ObservableCollection<string>();
+            SetClassifyLoadingStatus(true);
+            for (int i = 0; i < labels.Count; i++)
             {
-                LabelList = new ObservableCollection<string>();
-                LabelList.AddRange(labels);
-            });
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadLabelDelegate(LoadLabel), labels[i]);
+            }
+            SetClassifyLoadingStatus(false);
+        }
+
+
+
+
+
+        public async void GetTagList()
+        {
+            List<string> labels = DataBase.SelectLabelByVedioType(ClassifyVedioType, "tag");
+            TagList = new ObservableCollection<string>();
+            SetClassifyLoadingStatus(true);
+            for (int i = 0; i < labels.Count; i++)
+            {
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadLabelDelegate(LoadTag), labels[i]);
+            }
+            SetClassifyLoadingStatus(false);
+        }
+
+
+
+        public async void GetStudioList()
+        {
+            List<string> labels = DataBase.SelectLabelByVedioType(ClassifyVedioType, "studio");
+            StudioList = new ObservableCollection<string>();
+            SetClassifyLoadingStatus(true);
+            for (int i = 0; i < labels.Count; i++)
+            {
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadLabelDelegate(LoadStudio), labels[i]);
+            }
+            SetClassifyLoadingStatus(false);
+        }
+
+
+        public async void GetDirectoroList()
+        {
+            List<string> labels = DataBase.SelectLabelByVedioType(ClassifyVedioType, "director");
+            DirectorList = new ObservableCollection<string>();
+            SetClassifyLoadingStatus(true);
+            for (int i = 0; i < labels.Count; i++)
+            {
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadLabelDelegate(LoadDirector), labels[i]);
+            }
+            SetClassifyLoadingStatus(false);
         }
 
 
         //获得演员，信息照片都获取
         public void GetActorList()
         {
-            //TextType = "演员";
-            Statistic();
-            stopwatch.Restart();
-            List<Actress> Actresses = DataBase.SelectAllActorName(VedioType);
-            stopwatch.Stop();
-            Console.WriteLine($"\n加载演员用时：{stopwatch.ElapsedMilliseconds} ms");
+            Task.Run(() =>
+            {
+                Statistic();
+                List<Actress> Actresses = DataBase.SelectAllActorName(ClassifyVedioType);
+                if (ActorList != null && Actresses != null && Actresses.Count == ActorList.ToList().Count) { return; }
+                ActorList = new ObservableCollection<Actress>();
+                ActorList.AddRange(Actresses);
+                ActorFlipOver();
+            });
+        }
 
-            if (ActorList != null && Actresses != null && Actresses.Count == ActorList.ToList().Count) { return; }
-            ActorList = new ObservableCollection<Actress>();
-            ActorList.AddRange(Actresses);
-
-            ActorFlipOver();
-
-
+        private delegate void LoadGenreDelegate(Genre genre);
+        private void LoadGenre(Genre genre)
+        {
+            GenreList.Add(genre);
         }
 
 
         //获得类别
-        public void GetGenreList()
+        public async void GetGenreList()
         {
-            //TextType = "类别";
             Statistic();
-            List<Genre> Genres = DataBase.SelectGenreByVedioType(VedioType);
+            List<Genre> Genres = DataBase.SelectGenreByVedioType(ClassifyVedioType);
+            SetClassifyLoadingStatus(true);
             GenreList = new ObservableCollection<Genre>();
-            GenreList.AddRange(Genres);
-
+            for (int i = 0; i < Genres.Count; i++)
+            {
+                await App.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background, new LoadGenreDelegate(LoadGenre), Genres[i]);
+            }
+            SetClassifyLoadingStatus(false);
         }
+
+
+
+
+
+
+
+
 
 
         public void AddToRecentWatch(string ID)
@@ -1353,66 +1932,74 @@ namespace Jvedio.ViewModel
         public async Task<bool> Query()
         {
             if (!DataBase.IsTableExist("movie")) { return false; }
-
-            IsSearching = true;
             if (Search == "") return false;
-
             string FormatSearch = Search.ToProperSql();
 
             if (string.IsNullOrEmpty(FormatSearch)) { return false; }
 
-            string fanhao;
-            if (CurrentVedioType == VedioType.欧美)
-                fanhao = Identify.GetEuFanhao(FormatSearch);
-            else
-                fanhao = Identify.GetFanhao(FormatSearch);
 
-            string searchContent;
-            if (string.IsNullOrEmpty(fanhao)) searchContent = FormatSearch;
-            else searchContent = fanhao;
+
+            string searchContent = FormatSearch;
+
 
             List<Movie> oldMovieList = MovieList.ToList();
 
-            if (Properties.Settings.Default.AllSearchType == "识别码")
+            if (AllSearchType == MySearchType.识别码)
             {
-                TextType = "搜索识别码：" + searchContent;
+                string fanhao;
+                if (CurrentVedioType == VedioType.欧美)
+                    fanhao = Identify.GetEuFanhao(FormatSearch);
+                else
+                    fanhao = Identify.GetFanhao(FormatSearch);
+
+                if (string.IsNullOrEmpty(fanhao)) searchContent = FormatSearch;
+                else searchContent = fanhao;
+
+                TextType = Jvedio.Language.Resources.Search + Jvedio.Language.Resources.ID + " " + searchContent;
 
                 if (SearchInCurrent)
                     MovieList = oldMovieList.Where(arg => arg.id.IndexOf(searchContent) >= 0).ToList();
                 else
-                    MovieList = DataBase.SelectPartialInfo($"SELECT * FROM movie where id like '%{searchContent}%'");
+                {
+                    if(SearchFirstLetter)
+                        MovieList = DataBase.SelectPartialInfo($"SELECT * FROM movie where id like '%{searchContent}%'").Where(arg=>arg.id.ToUpper()[0]==searchContent.ToUpper()[0]).ToList();
+                    else
+                        MovieList = DataBase.SelectPartialInfo($"SELECT * FROM movie where id like '%{searchContent}%'");
+                }
+                    
 
-                
+
             }
 
-            else if (Properties.Settings.Default.AllSearchType == "名称")
+            else if (AllSearchType == MySearchType.名称)
             {
-                TextType = "搜索名称：" + searchContent;
+                TextType = Jvedio.Language.Resources.Search + Jvedio.Language.Resources.Title + " " + searchContent;
                 if (SearchInCurrent)
                     MovieList = oldMovieList.Where(arg => arg.title.IndexOf(searchContent) >= 0).ToList();
                 else
                     MovieList = DataBase.SelectPartialInfo($"SELECT * FROM movie where title like '%{searchContent}%'");
             }
 
-            else if (Properties.Settings.Default.AllSearchType == "演员")
+            else if (AllSearchType == MySearchType.演员)
             {
-                TextType = "搜索演员：" + searchContent;
+                TextType = Jvedio.Language.Resources.Search + Jvedio.Language.Resources.Actor + " " + searchContent;
                 if (SearchInCurrent)
                     MovieList = oldMovieList.Where(arg => arg.actor.IndexOf(searchContent) >= 0).ToList();
                 else
                     MovieList = DataBase.SelectPartialInfo($"SELECT * FROM movie where actor like '%{searchContent}%'");
             }
-
-
-
-
+            if (!SearchHistory.Contains(searchContent) && !SearchFirstLetter)
+            {
+                SearchHistory.Add(searchContent);
+                SaveSearchHistory();
+            }
             return true;
         }
 
 
         public void RandomDisplay()
         {
-            TextType = "随机展示";
+            TextType = Jvedio.Language.Resources.ToolTip_RandomShow;
             Statistic();
             MovieList = DataBase.SelectMoviesBySql($"SELECT * FROM movie ORDER BY RANDOM() limit {Properties.Settings.Default.DisplayNumber}");
             FlipOver();
@@ -1420,156 +2007,43 @@ namespace Jvedio.ViewModel
 
 
 
-        public void ExecutiveSqlCommand(int sideIndex, string textType, string sql,string dbName="")
+        public void ExecutiveSqlCommand(int sideIndex, string textType, string sql, string dbName = "")
         {
-
+            IsLoadingMovie = true;
+            TabSelectedIndex = 0;
             Dictionary<string, string> sqlInfo = new Dictionary<string, string>
             {
                 { "SideIndex", sideIndex.ToString() },
                 { "TextType", textType },
                 { "SqlCommand", sql }
             };
-            SqlCommands.Add(sqlInfo);
-            SqlIndex = SqlCommands.Count - 1;
+
             TextType = textType;
-            if (Properties.Settings.Default.ShowViewMode != "默认") TextType = TextType + "，" + Properties.Settings.Default.ShowViewMode;
-            if (Properties.Settings.Default.OnlyShowPlay ) TextType = TextType + "，可播放" ;
-            if (Properties.Settings.Default.OnlyShowSubSection) TextType = TextType + "，仅分段";
+
+            string viewText = "";
+            int.TryParse(Properties.Settings.Default.ShowViewMode, out int vm);
+            if (vm == 1)
+            {
+                viewText = Jvedio.Language.Resources.WithImage;
+            }
+            else if (vm == 2)
+            {
+                viewText = Jvedio.Language.Resources.NoImage;
+            }
+
+            if (vm != 0) TextType = TextType + "，" + viewText;
+            if (Properties.Settings.Default.OnlyShowPlay) TextType = TextType + "，" + Jvedio.Language.Resources.Playable;
+            if (Properties.Settings.Default.OnlyShowSubSection) TextType = TextType + "，" + Jvedio.Language.Resources.OnlyShowSubsection;
 
             Task.Run(() =>
             {
-                if (sideIndex == 5 || sideIndex == 6 || sideIndex == 7)
-                {
-                    var movies = DataBase.SelectMoviesBySql(sql);
-                    MovieList = new List<Movie>();
-                    if (sideIndex == 5)
-                        movies?.ForEach(arg => { if (arg.genre.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-                    else if (sideIndex == 6)
-                        movies?.ForEach(arg => { if (arg.actor.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-                    else if (sideIndex == 7)
-                        movies?.ForEach(arg => { if (arg.label.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-
-                    CurrentPage = 1;
-                }
-                else
-                {
-                    MovieList = DataBase.SelectMoviesBySql(sql,dbName);
-                }
-                Record.Add(MovieList.Select(arg=>arg.id).ToList());
-                RecordIndex = Record.Count-1;
+                MovieList = DataBase.SelectMoviesBySql(sql, dbName);
                 Statistic();
                 FlipOver();
             });
-
-
-        }
-
-        public void SwitchSqlCommand()
-        {
-            if (SqlCommands.Count > 0 && SqlIndex >= 0 && SqlIndex < SqlCommands.Count)
-            {
-
-                Dictionary<string, string> sqlInfo = SqlCommands[SqlIndex];
-                int idx = int.Parse(sqlInfo["SideIndex"]);
-                if (idx == 3)
-                {
-                    GetRecentWatch(false);
-                    SetSideButtonChecked(3);
-                }
-                else if (idx == 5 || idx == 6 || idx == 7)
-                {
-                    Statistic();
-                    var movies = DataBase.SelectMoviesBySql(sqlInfo["SqlCommand"]);
-                    MovieList = new List<Movie>();
-
-                    if (idx == 5)
-                        movies?.ForEach(arg => { if (arg.genre.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-                    else if (idx == 6)
-                        movies?.ForEach(arg => { if (arg.actor.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-                    else if (idx == 7)
-                        movies?.ForEach(arg => { if (arg.label.Split(' ').Any(m => m.ToUpper() == textType.ToUpper())) MovieList.Add(arg); });
-
-                    CurrentPage = 1;
-
-                    Record.Add(MovieList.Select(arg => arg.id).ToList());
-                    RecordIndex = Record.Count-1;
-
-                    FlipOver();
-                    SetSideButtonChecked(5);
-                }
-                else
-                {
-                    int.TryParse(sqlInfo["SideIndex"], out int sideIndex);
-                    TextType = sqlInfo["TextType"];
-                    Task.Run(() =>
-                    {
-                        Statistic();
-                        MovieList = DataBase.SelectPartialInfo(sqlInfo["SqlCommand"]);
-
-                        Record.Add(MovieList.Select(arg => arg.id).ToList());
-                        RecordIndex = Record.Count - 1;
-
-                        FlipOver();
-                    });
-                    SetSideButtonChecked(sideIndex);
-                }
-
-            }
+            InitLettersNavigation();
 
         }
-
-
-        private void SetSideButtonChecked(int idx)
-        {
-            Main main = App.Current.Windows[0] as Main;
-            if (idx == 0)
-            {
-                main.AllRB.IsChecked = true;
-            }
-            else if (idx == 1)
-            {
-                main.LoveRB.IsChecked = true;
-            }
-            else if (idx == 2)
-            {
-                main.CreateRB.IsChecked = true;
-            }
-            else if (idx == 3)
-            {
-                main.PlayRB.IsChecked = true;
-            }
-            else if (idx == 4)
-            {
-                main.GenreRB.IsChecked = true;
-            }
-            else if (idx == 5)
-            {
-                main.ActorRB.IsChecked = true;
-            }
-            else if (idx == 6)
-            {
-                main.LabelRB.IsChecked = true;
-            }
-            else if (idx == 7)
-            {
-                main.DirRB.IsChecked = true;
-            }
-            else if (idx == 8)
-            {
-                main.TypeRB1.IsChecked = true;
-            }
-            else if (idx == 9)
-            {
-                main.TypeRB2.IsChecked = true;
-            }
-            else if (idx == 9)
-            {
-                main.TypeRB3.IsChecked = true;
-            }
-
-
-        }
-
 
 
         public void Sort()
@@ -1578,40 +2052,40 @@ namespace Jvedio.ViewModel
             {
                 List<Movie> sortMovieList = new List<Movie>();
                 bool SortDescending = Properties.Settings.Default.SortDescending;
-
-                switch (Properties.Settings.Default.SortType)
+                int.TryParse(Properties.Settings.Default.SortType, out int sortindex);
+                switch (sortindex)
                 {
-                    case "识别码":
+                    case 0:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.id).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.id).ToList(); }
                         break;
-                    case "文件大小":
+                    case 1:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.filesize).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.filesize).ToList(); }
                         break;
-                    case "创建时间":
+                    case 2:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.scandate).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.scandate).ToList(); }
                         break;
-                    case "导入时间":
+                    case 3:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.otherinfo).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.otherinfo).ToList(); }
                         break;
-                    case "喜爱程度":
+                    case 4:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.favorites).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.favorites).ToList(); }
                         break;
-                    case "名称":
+                    case 5:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.title).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.title).ToList(); }
                         break;
-                    case "访问次数":
+                    case 6:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.visits).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.visits).ToList(); }
                         break;
-                    case "发行日期":
+                    case 7:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.releasedate).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.releasedate).ToList(); }
                         break;
-                    case "评分":
+                    case 8:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.rating).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.rating).ToList(); }
                         break;
-                    case "时长":
+                    case 9:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.runtime).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.runtime).ToList(); }
                         break;
-                    case "演员":
+                    case 10:
                         if (SortDescending) { sortMovieList = MovieList.OrderByDescending(o => o.actor.Split(new char[] { ' ', '/' })[0]).ToList(); } else { sortMovieList = MovieList.OrderBy(o => o.actor.Split(new char[] { ' ', '/' })[0]).ToList(); }
                         break;
                     default:
@@ -1619,26 +2093,31 @@ namespace Jvedio.ViewModel
                         break;
                 }
                 MovieList = new List<Movie>();
-                sortMovieList.ForEach(arg => { MovieList.Add(arg); });
-                //Statistic();
-                //FlipOver();
+                MovieList.AddRange(sortMovieList);
             }
+
         }
 
-
+        public void AsyncFlipOver()
+        {
+            Task.Run(() =>
+            {
+                FlipOver();
+            });
+        }
 
 
         public void Reset()
         {
             SideIdx = 0;
-            ExecutiveSqlCommand(0, "所有视频", "SELECT * FROM movie");
-
+            ExecutiveSqlCommand(0, Jvedio.Language.Resources.AllVideo, "SELECT * FROM movie");
+            
         }
 
         public void GetFavoritesMovie()
         {
             SideIdx = 1;
-            ExecutiveSqlCommand(1, "我的喜爱", "SELECT * from movie where favorites>0 and favorites<=5");
+            ExecutiveSqlCommand(1, Jvedio.Language.Resources.Favorites, "SELECT * from movie where favorites>0 and favorites<=5");
         }
 
         public void GetRecentMovie()
@@ -1646,11 +2125,12 @@ namespace Jvedio.ViewModel
             SideIdx = 2;
             string date1 = DateTime.Now.AddDays(-1 * Properties.Settings.Default.RecentDays).Date.ToString("yyyy-MM-dd");
             string date2 = DateTime.Now.ToString("yyyy-MM-dd");
-            ExecutiveSqlCommand(2, $"{Properties.Settings.Default.RecentDays} 天内的最近创建", $"SELECT * from movie WHERE scandate BETWEEN '{date1}' AND '{date2}'");
+            ExecutiveSqlCommand(2, $"{Jvedio.Language.Resources.RecentCreate} ({Properties.Settings.Default.RecentDays})", $"SELECT * from movie WHERE scandate BETWEEN '{date1}' AND '{date2}'");
         }
 
         public void GetRecentWatch(bool add = true)
         {
+            IsLoadingMovie = true;
             SideIdx = 3;
             List<Movie> movies = new List<Movie>();
             foreach (var keyValuePair in RecentWatched)
@@ -1661,38 +2141,18 @@ namespace Jvedio.ViewModel
                     {
                         Movie movie = DataBase.SelectMovieByID(item);
                         if (movie != null) movies.Add(movie);
-                        
-
                     }
                 }
             }
 
-            TextType = $"{Properties.Settings.Default.RecentDays} 天内的最近播放";
-            Statistic();
-            MovieList = new List<Movie>();
-            MovieList.AddRange(movies);
-            CurrentPage = 1;
-
-            Record.Add(MovieList.Select(arg => arg.id).ToList());
-            RecordIndex = Record.Count - 1;
-
-            FlipOver();
-            //if (MovieList.Count == 0 && RecentWatchedCount > 0)
-            //    HandyControl.Controls.Growl.Info("该库中无最近播放，请切换到其他库！");
-            //else if (MovieList.Count < RecentWatchedCount)
-            //    HandyControl.Controls.Growl.Info($"该库中仅发现 {MovieList.Count} 个最近播放");
-            if (add)
+            TextType = $"{Jvedio.Language.Resources.RecentPlay}（{Properties.Settings.Default.RecentDays} ）";
+            Task.Run(() =>
             {
-                Dictionary<string, string> sqlInfo = new Dictionary<string, string>
-                {
-                    { "SideIndex", "3" },
-                    { "TextType", TextType },
-                    { "SqlCommand", "RecentWatch" }
-                };
-                SqlCommands.Add(sqlInfo);
-                SqlIndex = SqlCommands.Count - 1;
-            }
-
+                Statistic();
+                MovieList = new List<Movie>();
+                MovieList.AddRange(movies);
+                FlipOver();
+            });
         }
 
 
@@ -1705,10 +2165,6 @@ namespace Jvedio.ViewModel
             MovieList = new List<Movie>();
             MovieList.AddRange(movies);
             CurrentPage = 1;
-
-            Record.Add(MovieList.Select(arg => arg.id).ToList());
-            RecordIndex = Record.Count - 1;
-
             FlipOver();
         }
 
@@ -1735,9 +2191,9 @@ namespace Jvedio.ViewModel
             ExecutiveSqlCommand(5, moviegenre, "SELECT * from movie where genre like '%" + moviegenre + "%'");
         }
 
-        public void GetMoviebyLabel(string movielabel)
+        public void GetMoviebyLabel(string movielabel, string type = "label")
         {
-            ExecutiveSqlCommand(7, movielabel, "SELECT * from movie where label like '%" + movielabel + "%'");
+            ExecutiveSqlCommand(7, movielabel, $"SELECT * from movie where {type} like '%{movielabel}%'");
         }
 
 
@@ -1745,7 +2201,7 @@ namespace Jvedio.ViewModel
         public void GetMoviebyActress(Actress actress)
         {
             Statistic();
-            int vediotype = (int)VedioType;
+            int vediotype = (int)ClassifyVedioType;
             //根据视频类型选择演员
 
             List<Movie> movies;
@@ -1761,78 +2217,61 @@ namespace Jvedio.ViewModel
                 if (arg.actor.Split(actorSplitDict[arg.vediotype]).Any(m => m.ToUpper() == actress.name.ToUpper())) MovieList.Add(arg);
             });
 
-            Record.Add(MovieList.Select(arg => arg.id).ToList());
-            RecordIndex = Record.Count - 1;
-
             CurrentPage = 1;
             FlipOver();
         }
 
 
         //根据视频类型选择演员
-        public void GetMoviebyActressAndVetioType(Actress actress)
+        public async Task<bool> AsyncGetMoviebyActress(Actress actress)
         {
-            Statistic();
-            List<Movie> movies;
-            if (actress.id == "")
+            return await Task.Run(() =>
             {
-                if (VedioType == 0) { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actor like '%{actress.name}%'"); }
-                else { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actor like '%{actress.name}%' and vediotype={(int)VedioType}"); }
-            }
-            else
-            {
-                if (VedioType == 0) { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actorid like '%{actress.id}%'"); }
-                else { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actorid like '%{actress.id}%' and vediotype={(int)VedioType}"); }
-            }
-
-
-            MovieList = new List<Movie>();
-            if (movies != null || movies.Count > 0)
-            {
-                movies.ForEach(arg =>
+                Statistic();
+                List<Movie> movies;
+                if (actress.id == "")
                 {
-                    try { if (arg.actor.Split(actorSplitDict[arg.vediotype]).Any(m => m.ToUpper() == actress.name.ToUpper())) MovieList.Add(arg); }
-                    catch (Exception e)
+                    if (ClassifyVedioType == 0) { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actor like '%{actress.name}%'"); }
+                    else { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actor like '%{actress.name}%' and vediotype={(int)ClassifyVedioType}"); }
+                }
+                else
+                {
+                    if (ClassifyVedioType == 0) { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actorid like '%{actress.id}%'"); }
+                    else { movies = DataBase.SelectMoviesBySql($"SELECT * from movie where actorid like '%{actress.id}%' and vediotype={(int)ClassifyVedioType}"); }
+                }
+
+
+                MovieList = new List<Movie>();
+                if (movies != null || movies.Count > 0)
+                {
+                    foreach (var item in movies)
                     {
-                        Logger.LogE(e);
+                        try { if (item.actor.Split(actorSplitDict[item.vediotype]).Any(m => m.ToUpper() == actress.name.ToUpper())) MovieList.Add(item); }
+                        catch (Exception e)
+                        {
+                            Logger.LogE(e);
+                        }
                     }
-                });
-
-            }
-            CurrentPage = 1;
-            Record.Add(MovieList.Select(arg => arg.id).ToList());
-            RecordIndex = Record.Count - 1;
-
+                }
+                CurrentPage = 1;
+                return true;
+            });
         }
-
-
-
-
-
-        public void GetMoviebyVedioType(VedioType vt)
-        {
-            CurrentVedioType = vt;
-            TextType = vt.ToString();
-            Statistic();
-            MovieList = DataBase.SelectPartialInfo("SELECT * from movie where vediotype=" + (int)vt);
-            FlipOver();
-        }
-
-
 
 
 
         public void ShowDetailsData()
         {
+            if (MovieList == null) return;
             Task.Run(() =>
             {
 
-                TextType = "详情模式";
+                TextType = Jvedio.Language.Resources.DetailMode;
                 Statistic();
                 List<Movie> movies = new List<Movie>();
 
-                TotalPage = (int)Math.Ceiling((double)MovieList.Count / (double)Properties.Settings.Default.DisplayNumber);
-                if (MovieList != null && MovieList.Count > 0)
+                TotalPage = (int)Math.Ceiling((double)FilterMovieList.Count / (double)Properties.Settings.Default.DisplayNumber);
+                if (MovieList.Count > 0)
                 {
                     MovieList.ForEach(arg =>
                     {
@@ -1850,7 +2289,6 @@ namespace Jvedio.ViewModel
 
                 }
                 CurrentCount = DetailsDataList.Count;
-                TotalCount = MovieList.Count;
                 IsFlipOvering = false;
                 //App.Current.Windows[0].Cursor = Cursors.Arrow;
             });
@@ -1862,20 +2300,19 @@ namespace Jvedio.ViewModel
         /// </summary>
         public void Statistic()
         {
-            if (!DataBase.IsTableExist("movie")) { return; }
+            Task.Run(() =>
+            {
+                if (!DataBase.IsTableExist("movie")) { return; }
+                AllVedioCount = DataBase.SelectCountBySql("");
+                FavoriteVedioCount = DataBase.SelectCountBySql("where favorites>0 and favorites<=5");
+                VedioTypeACount = DataBase.SelectCountBySql("where vediotype=1");
+                VedioTypeBCount = DataBase.SelectCountBySql("where vediotype=2");
+                VedioTypeCCount = DataBase.SelectCountBySql("where vediotype=3");
 
-            stopwatch.Restart();
-            AllVedioCount = DataBase.SelectCountBySql("");
-            FavoriteVedioCount = DataBase.SelectCountBySql("where favorites>0 and favorites<=5");
-            VedioTypeACount = DataBase.SelectCountBySql("where vediotype=1");
-            VedioTypeBCount = DataBase.SelectCountBySql("where vediotype=2");
-            VedioTypeCCount = DataBase.SelectCountBySql("where vediotype=3");
-
-            string date1 = DateTime.Now.AddDays(-1 * Properties.Settings.Default.RecentDays).Date.ToString("yyyy-MM-dd");
-            string date2 = DateTime.Now.ToString("yyyy-MM-dd");
-            RecentVedioCount = DataBase.SelectCountBySql($"WHERE scandate BETWEEN '{date1}' AND '{date2}'");
-            stopwatch.Stop();
-            //Console.WriteLine($"\n统计用时：{stopwatch.ElapsedMilliseconds} ms");
+                string date1 = DateTime.Now.AddDays(-1 * Properties.Settings.Default.RecentDays).Date.ToString("yyyy-MM-dd");
+                string date2 = DateTime.Now.ToString("yyyy-MM-dd");
+                RecentVedioCount = DataBase.SelectCountBySql($"WHERE scandate BETWEEN '{date1}' AND '{date2}'");
+            });
         }
 
 
@@ -1887,7 +2324,7 @@ namespace Jvedio.ViewModel
             foreach (Movie movie in MovieList)
             {
                 string path = GetPathByDepth(movie.filepath, Properties.Settings.Default.FilePathClassificationMaxDepth);
-                if (!FilePathClassification.Contains(path)) FilePathClassification.Add(path);
+                if (!string.IsNullOrEmpty(path) && !FilePathClassification.Contains(path)) FilePathClassification.Add(path);
                 if (FilePathClassification.Count > Properties.Settings.Default.FilePathClassificationMaxCount) break;
             }
         }

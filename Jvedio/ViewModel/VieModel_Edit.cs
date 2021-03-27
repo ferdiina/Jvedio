@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using GalaSoft.MvvmLight;
 using GalaSoft.MvvmLight.CommandWpf;
-
+using static Jvedio.FileProcess;
 using System.Collections.ObjectModel;
 using System.Windows.Media.Imaging;
 using System.IO;
@@ -53,12 +53,12 @@ namespace Jvedio.ViewModel
 
             //获取创建日期
             string createDate = "";
-            try { createDate = fileInfo.CreationTime.ToString("yyyy-MM-dd HH:mm:ss"); }
+            try { createDate = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"); }
             catch { }
             if (createDate == "") createDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
 
             models.id = Identify.GetFanhao(fileInfo.Name);
-            models.vediotype =(int) Identify.GetVedioType(models.id);
+            models.vediotype =(int) Identify.GetVideoType(models.id);
             models.otherinfo = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
             models.scandate= createDate ;
             models.filesize = fileInfo.Length;
@@ -103,7 +103,7 @@ namespace Jvedio.ViewModel
 
         public bool SaveModel(string ID="")
         {
-            string table = ((Main)Jvedio.GetWindow.Get("Main")).GetCurrentList();
+            string table = ((Main)GetWindowByName("Main")).GetCurrentList();
 
 
             if (ID == "" && DetailMovie != null && DetailMovie.id.ToUpper() == id.ToUpper())

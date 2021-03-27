@@ -2,20 +2,181 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 >
 
-    <Style x:Key="ButtonStyleFill" TargetType="{x:Type Button}">
+
+
+    <Style x:Key="ButtonTrigger_Yes" TargetType="Button">
         <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Button}">
-                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="5">
-                        <TextBlock Foreground="White" Text="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border x:Name="mainBorder"    BorderThickness="0" Padding="10 4" CornerRadius="3">
+
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource BackgroundSearch}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver"  Value="True">
+                                        <Setter Property="Background" Value="#66cc00"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+
+    </Style>
+    <Style x:Key="ButtonTrigger_No" TargetType="Button">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="mainBorder"    BorderThickness="0" Padding="10 4" CornerRadius="3">
+
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="{DynamicResource BackgroundSearch}"/>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver"  Value="True">
+                                        <Setter Property="Background" Value="#ff6600"/>
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+
+    </Style>
+
+
+
+    <Style x:Key="FlatButton" TargetType="{x:Type Button}">
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="Width" Value="auto"/>
+        <Setter Property="Height" Value="auto"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush" Value="#1A97ED"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border   Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                        <TextBlock Margin="10 5" Foreground="{DynamicResource ForegroundSearch}" Text="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        
+
+        
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard FillBehavior="HoldEnd">
+                            <ColorAnimation Duration="0:0:0.2"  Storyboard.TargetProperty="Background.Color" To="#1A97ED" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard >
+                            <ColorAnimation Duration="0:0:0.2" Storyboard.TargetProperty="Background.Color" To="Transparent" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.ExitActions>
+            </Trigger>
+
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="Gray"/>
+                <Setter Property="BorderBrush" Value="Gray"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="FlatRedButton" TargetType="{x:Type Button}">
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="Width" Value="auto"/>
+        <Setter Property="Height" Value="auto"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush" Value="Red"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border   Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="3">
+                        <TextBlock Margin="10 5" Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+
+
+
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard FillBehavior="HoldEnd">
+                            <ColorAnimation Duration="0:0:0.2"  Storyboard.TargetProperty="Background.Color" To="Red" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard >
+                            <ColorAnimation Duration="0:0:0.2" Storyboard.TargetProperty="Background.Color" To="Transparent" />
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.ExitActions>
+            </Trigger>
+
+            <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Background" Value="Gray"/>
+                <Setter Property="BorderBrush" Value="Gray"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+    
+    <Style x:Key="ButtonStyleFill" TargetType="{x:Type Button}">
+        <Setter Property="Margin" Value="5"/>
+        <Setter Property="MinWidth" Value="80"/>
+        <Setter Property="Width" Value="auto"/>
+        <Setter Property="Height" Value="auto"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border   Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="0" CornerRadius="5">
+                        <TextBlock Margin="10 5" Foreground="White" Text="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
         <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
         <Setter Property="Background" Value="#1A97ED"/>
-        <Setter Property="Margin" Value="5"/>
         <Setter Property="HorizontalAlignment" Value="Right"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
@@ -29,6 +190,9 @@
     </Style>
 
     <Style x:Key="CloseButton" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="27"/>
+        <Setter Property="Width" Value="27"/>
+        <Setter Property="Margin" Value="5 0"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -50,14 +214,14 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard FillBehavior="HoldEnd">
-                                        <ColorAnimation Duration="0:0:0.5" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Red" />
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Red" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard >
-                                        <ColorAnimation Duration="0:0:0.15" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Transparent" />
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Transparent" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -69,6 +233,9 @@
     </Style>
 
     <Style x:Key="TitleButton" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="27"/>
+        <Setter Property="Width" Value="27"/>
+        <Setter Property="Margin" Value="5 0"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -90,14 +257,14 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard FillBehavior="HoldEnd">
-                                        <ColorAnimation Duration="0:0:0.5" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Gray" />
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Gray" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard >
-                                        <ColorAnimation Duration="0:0:0.15" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Transparent" />
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Transparent" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.ExitActions>
@@ -107,5 +274,49 @@
             </Setter.Value>
         </Setter>
     </Style>
-
+    <Style x:Key="NavigateButton" TargetType="{x:Type Button}">
+        <Setter Property="Height" Value="27"/>
+        <Setter Property="Width" Value="27"/>
+        <Setter Property="Margin" Value="5 0"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Foreground" Value="{DynamicResource ForegroundSearch}"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="border" CornerRadius="3" Background="Transparent"   SnapsToDevicePixels="true">
+                        <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="Center" Margin="0" RecognizesAccessKey="True" SnapsToDevicePixels="True" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsPressed" Value="true">
+                            <Setter Property="Background" TargetName="border" Value="darkgray"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="false">
+                            <Setter Property="Background" TargetName="border" Value="Gray"/>
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard FillBehavior="HoldEnd">
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Gray" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard >
+                                        <ColorAnimation Duration="0:0:0.2" Storyboard.TargetName="border" Storyboard.TargetProperty="Background.Color" To="Transparent" />
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
